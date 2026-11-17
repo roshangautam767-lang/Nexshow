@@ -11,7 +11,7 @@ export async function middleware(request: NextRequest) {
   const supabase = createServerClient(url, key, {
     cookies: {
       getAll: () => request.cookies.getAll(),
-      setAll: (list: { name: string; value: string; options?: any }[]) => {
+      setAll: (list) => {
         list.forEach(({ name, value }) => request.cookies.set(name, value));
         response = NextResponse.next({ request });
         list.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
   });
   const { data: { user } } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
-  if (!user && ['/account', '/admin', '/checkout', '/booking'].some((x) => path.startsWith(x))) {
+  if (!user && ['/account', '/admin', '/checkout', '/booking', '/staff'].some((x) => path.startsWith(x))) {
     const to = request.nextUrl.clone();
     to.pathname = '/login';
     to.search = `?next=${encodeURIComponent(path)}`;
