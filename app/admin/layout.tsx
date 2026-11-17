@@ -3,7 +3,7 @@ import { requireAdmin } from '@/lib/auth';
 
 const links = [
   { href: '/admin', label: 'Overview' }, { href: '/admin/theatres', label: 'Theatres' }, { href: '/admin/shows', label: 'Shows' }, { href: '/admin/users', label: 'Users' },
-  { href: '/admin/coupons', label: 'Coupons' }, { href: '/admin/coins', label: 'Movie Coin settings' },
+  { href: '/admin/coupons', label: 'Coupons' }, { href: '/admin/coins', label: 'Movie Coin settings' }, { href: '/staff/verify', label: 'Verify tickets' },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

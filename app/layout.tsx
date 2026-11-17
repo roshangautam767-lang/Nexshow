@@ -19,7 +19,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const saved = cookies().get('nx_city')?.value;
   const city = CITIES.find((c) => c === saved) ?? DEFAULT_CITY;
   const user = await getUser();
-  const account = { loggedIn: Boolean(user), isAdmin: user ? (await getRole(user.id)) === 'admin' : false };
+  const role = user ? await getRole(user.id) : null;
+  const account = { loggedIn: Boolean(user), isAdmin: role === 'admin', isStaff: role === 'admin' || role === 'staff' };
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
       <body>

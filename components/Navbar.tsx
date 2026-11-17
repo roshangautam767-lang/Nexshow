@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 import { CITIES } from '@/lib/cities';
 
-export default function Navbar({ city, account }: { city: string; account: { loggedIn: boolean; isAdmin: boolean } }) {
+export default function Navbar({ city, account }: { city: string; account: { loggedIn: boolean; isAdmin: boolean; isStaff: boolean } }) {
   const router = useRouter();
   const [q, setQ] = useState('');
 
@@ -54,6 +54,7 @@ export default function Navbar({ city, account }: { city: string; account: { log
           {account.loggedIn ? (
             <>
               {account.isAdmin && <Link href="/admin" className="text-mu hover:text-tx">Admin</Link>}
+              {account.isStaff && <Link href="/staff/verify" className="text-mu hover:text-tx">Verify tickets</Link>}
               <Link href="/account" className="btn-ghost px-4 py-2">My account</Link>
             </>
           ) : (

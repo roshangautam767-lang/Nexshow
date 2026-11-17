@@ -27,3 +27,11 @@ export async function requireAdmin() {
   if ((await getRole(user.id)) !== 'admin') redirect('/');
   return user;
 }
+
+// Theatre staff and admins can check tickets at the entrance.
+export async function requireStaff() {
+  const user = await requireUser('/staff/verify');
+  const role = await getRole(user.id);
+  if (role !== 'staff' && role !== 'admin') redirect('/');
+  return user;
+}
