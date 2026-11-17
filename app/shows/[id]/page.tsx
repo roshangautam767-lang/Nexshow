@@ -1,13 +1,17 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import SeatMap, { SeatView } from '@/components/SeatMap';
+import { Flash } from '@/components/Forms';
+import { SeatView } from '@/components/SeatMap';
+import SeatPicker from '@/components/SeatPicker';
 import { SourceBadge } from '@/components/ShowList';
-import { fmtDateTime, money } from '@/lib/format';
+import { getUser } from '@/lib/auth';
+import { fmtDateTime } from '@/lib/format';
+import { MAX_SEATS } from '@/lib/pricing';
 import { IMG } from '@/lib/tmdb';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
-export default async function ShowPage({ params }: { params: { id: string } }) {
+export default async function ShowPage({ params, searchParams }: { params: { id: string }; searchParams: { error?: string } }) {
   if (!/^\d+$/.test(params.id)) notFound();
   const db = supabaseAdmin();
   await db.rpc('release_expired_locks');
@@ -16,6 +20,7 @@ export default async function ShowPage({ params }: { params: { id: string } }) {
     .eq('id', params.id).maybeSingle();
   if (!show || !show.active) notFound();
   const { data: rows } = await db.from('show_seats').select('seat_id,status,seats(row_label,seat_no,category)').eq('show_id', params.id);
+  const user = await getUser();
 
   const s: any = show;
   const seats: SeatView[] = (rows ?? []).map((r: any) => ({ id: r.seat_id, row: r.seats.row_label, no: r.seats.seat_no, category: r.seats.category, status: r.status }));
@@ -35,9 +40,10 @@ export default async function ShowPage({ params }: { params: { id: string } }) {
           <div className="mt-2 flex flex-wrap items-center gap-2"><SourceBadge source={s.screens.theatres.source} /><span className="text-sm text-mu">{free} of {seats.length} seats available</span></div>
         </div>
       </div>
+      <Flash error={searchParams.error} />
       {started && <p className="notice mb-6">This show has already started.</p>}
-      <SeatMap seats={seats} prices={{ regular: Number(s.price_regular), premium: Number(s.price_premium), recliner: Number(s.price_recliner) }} />
-      <p className="notice mx-auto mt-8 max-w-xl text-center text-sm">Seat selection and booking open in the next phase. This map already shows the live seat status from the database.</p>
+      <SeatPicker showId={s.id} seats={seats} loggedIn={Boolean(user)} closed={started} max={MAX_SEATS}
+        prices={{ regular: Number(s.price_regular), premium: Number(s.price_premium), recliner: Number(s.price_recliner) }} />
     </div>
   );
 }

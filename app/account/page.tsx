@@ -1,4 +1,6 @@
+import Link from 'next/link';
 import { Field, Flash } from '@/components/Forms';
+import { fmtDateTime, money } from '@/lib/format';
 import { MovieGrid } from '@/components/MovieRow';
 import { requireUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase/admin';
@@ -10,10 +12,11 @@ import { updateProfile } from '@/app/actions/account';
 export default async function Account({ searchParams }: { searchParams: { error?: string; msg?: string } }) {
   const user = await requireUser();
   const db = supabaseAdmin();
-  const [{ data: profile }, { data: wallet }, { data: favs }] = await Promise.all([
+  const [{ data: profile }, { data: wallet }, { data: favs }, { data: bookings }] = await Promise.all([
     db.from('profiles').select('full_name,phone,city,whatsapp_consent').eq('id', user.id).maybeSingle(),
     db.from('movie_coin_wallets').select('balance').eq('user_id', user.id).maybeSingle(),
     db.from('favourites').select('movies(tmdb_id,title,poster_path,release_date,rating)').eq('user_id', user.id),
+    db.from('bookings').select('id,status,total,created_at,shows(starts_at,movies(title),screens(theatres(name)))').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
   ]);
   const favourites: Movie[] = (favs ?? []).flatMap((f: any) => (f.movies ? [f.movies] : [])).map((m: any) => ({
     id: m.tmdb_id, title: m.title, overview: '', poster_path: m.poster_path, backdrop_path: null,
@@ -57,7 +60,16 @@ export default async function Account({ searchParams }: { searchParams: { error?
             <p className="text-sm text-mu">Coins are added after your first confirmed booking. 1 coin = ₹1 off.</p>
           </div>
           <h2 className="mb-3 mt-8 font-display text-3xl font-black">Bookings</h2>
-          <p className="notice">You have no bookings yet. Your tickets will appear here once booking opens.</p>
+          {(bookings ?? []).length === 0 ? <p className="notice">You have no bookings yet. Pick a movie and choose your seats.</p> : (
+            <div className="space-y-2">
+              {(bookings ?? []).map((b: any) => (
+                <Link key={b.id} href={`/booking/${b.id}`} className="block rounded-md border border-line bg-panel p-3 text-sm hover:border-red">
+                  <span className="font-bold">{b.shows?.movies?.title}</span> <span className="text-mu">· {b.shows?.screens?.theatres?.name}</span>
+                  <span className="block text-mu">{b.shows ? fmtDateTime(b.shows.starts_at) : ''} · {b.status} · {money(b.total)}</span>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
       </div>
 
