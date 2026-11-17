@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { PAY_WINDOW_MS } from '@/lib/pricing';
 import { createOrder, razorpayConfigured, razorpayKeyId, verifyCheckoutSignature } from '@/lib/razorpay';
 import { Finalized, finalizePayment } from '@/lib/payments';
+import { notifyTicket } from '@/lib/whatsapp';
 
 const UUID = /^[0-9a-f-]{36}$/i;
 
@@ -63,6 +64,7 @@ export async function confirmFreeBooking(bookingId: string): Promise<{ ok: true 
   if (!b || b.status !== 'pending' || Number(b.total) !== 0) return { ok: false, error: 'This booking cannot be confirmed without payment.' };
   const { error } = await db.rpc('confirm_booking', { p_booking: bookingId, p_razorpay_payment_id: null });
   if (error) return { ok: false, error: 'Could not confirm the booking. Please try again.' };
+  await notifyTicket(bookingId);
   revalidatePath(`/booking/${bookingId}`);
   return { ok: true };
 }

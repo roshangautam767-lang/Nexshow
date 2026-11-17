@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import Countdown from '@/components/Countdown';
 import PayButton from '@/components/PayButton';
 import TicketCard from '@/components/TicketCard';
+import WhatsAppStatus from '@/components/WhatsAppStatus';
+import { whatsappConfigured } from '@/lib/whatsapp';
 import { qrDataUrl } from '@/lib/ticket';
 import { razorpayConfigured } from '@/lib/razorpay';
 import { SourceBadge } from '@/components/ShowList';
@@ -22,7 +24,7 @@ export default async function BookingPage({ params }: { params: { id: string } }
   await db.rpc('release_expired_locks'); // an unpaid booking whose hold ran out becomes "expired" here
 
   const { data: b } = await db.from('bookings')
-    .select('id,booking_ref,status,subtotal,convenience_fee,tax,coupon_discount,coin_discount,coins_redeemed,total,lock_id,show_id,ticket_token,ticket_used_at,shows(starts_at,movies(title),screens(name,theatres(name,address,city,source)))')
+    .select('id,booking_ref,status,subtotal,convenience_fee,tax,coupon_discount,coin_discount,coins_redeemed,total,lock_id,show_id,ticket_token,ticket_used_at,phone,whatsapp_consent,shows(starts_at,movies(title),screens(name,theatres(name,address,city,source)))')
     .eq('id', params.id).eq('user_id', user.id).maybeSingle();
   if (!b) notFound();
 
@@ -35,6 +37,9 @@ export default async function BookingPage({ params }: { params: { id: string } }
   const labels = (seatRows ?? []).map((r: any) => `${r.row_label}${r.seat_no}`).sort((a: string, c: string) => a.localeCompare(c, undefined, { numeric: true }));
   const s: any = b.shows;
   const qr = b.status === 'confirmed' && b.ticket_token ? await qrDataUrl(b.ticket_token) : null;
+  const { data: wa } = b.status === 'confirmed'
+    ? await db.from('whatsapp_messages').select('status,attempts,updated_at').eq('booking_id', b.id).maybeSingle()
+    : { data: null };
 
   return (
     <div className="container-x max-w-2xl py-10">
@@ -54,6 +59,7 @@ export default async function BookingPage({ params }: { params: { id: string } }
         <div className="mb-6 space-y-3">
           <TicketCard qr={qr} t={{ ref: b.booking_ref, movie: s?.movies?.title ?? '', theatre: s?.screens?.theatres?.name ?? '', address: [s?.screens?.theatres?.address, s?.screens?.theatres?.city].filter(Boolean).join(', '), screen: s?.screens?.name ?? '', startsAt: s?.starts_at ?? '', seats: labels, used: Boolean(b.ticket_used_at) }} />
           <a href={`/booking/${b.id}/pdf`} className="btn">Download PDF ticket</a>
+          <WhatsAppStatus bookingId={b.id} configured={whatsappConfigured()} consent={Boolean(b.whatsapp_consent)} phone={b.phone ?? null} row={wa} />
         </div>
       )}
       {['expired', 'cancelled', 'failed'].includes(b.status) && <p className="notice mb-4">This booking is no longer active. Any Movie Coins you reserved were returned to your wallet.</p>}

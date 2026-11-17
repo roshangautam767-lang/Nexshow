@@ -2,6 +2,7 @@
 // It is safe to call many times for the same payment.
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { capturePayment, fetchPayment, refundPayment } from '@/lib/razorpay';
+import { notifyTicket } from '@/lib/whatsapp';
 
 export type Finalized = { status: 'confirmed' | 'pending' | 'refunded' | 'error'; message: string; bookingId?: string };
 
@@ -40,7 +41,11 @@ export async function finalizePayment(paymentId: string, orderId: string): Promi
   }
   // Was it THIS payment that confirmed the booking? If another payment did, this one is a duplicate charge.
   const { data: after } = await db.from('payments').select('status,razorpay_payment_id').eq('id', pay.id).maybeSingle();
-  if (after?.status === 'paid' && after.razorpay_payment_id === paymentId) return { status: 'confirmed', message: 'Payment received.', bookingId: pay.booking_id };
+  if (after?.status === 'paid' && after.razorpay_payment_id === paymentId) {
+    await notifyTicket(pay.booking_id); // sends the WhatsApp ticket once; the booking is already safe if this fails
+    return { status: 'confirmed', message: 'Payment received.', bookingId: pay.booking_id };
+  }
   if ((res as any)?.status === 'already_confirmed') return refund('This booking was already paid. The extra payment is being refunded.');
+  await notifyTicket(pay.booking_id);
   return { status: 'confirmed', message: 'Payment received.', bookingId: pay.booking_id };
 }
