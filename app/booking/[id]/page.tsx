@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Countdown from '@/components/Countdown';
+import PayButton from '@/components/PayButton';
+import { razorpayConfigured } from '@/lib/razorpay';
 import { SourceBadge } from '@/components/ShowList';
 import { requireUser } from '@/lib/auth';
 import { fmtDateTime, money } from '@/lib/format';
@@ -39,10 +41,13 @@ export default async function BookingPage({ params }: { params: { id: string } }
       {b.status === 'pending' && lock && (
         <div className="mb-4 space-y-3">
           <Countdown expiresAt={lock.expires_at} label="Your seats are held for" />
-          <p className="notice">Your seats are held for you. Online payment opens in the next phase, so this booking cannot be paid yet. If you do nothing, the seats are released automatically when the timer ends.</p>
+          {Number(b.total) === 0 || razorpayConfigured()
+            ? <PayButton bookingId={b.id} free={Number(b.total) === 0} amountLabel={money(b.total)} title={s?.movies?.title ?? 'NexShow booking'} />
+            : <p className="notice">Online payments are not set up yet. Add your Razorpay test keys to .env.local.</p>}
+          <p className="text-xs text-mu">If you do not pay before the timer ends, your seats are released automatically.</p>
         </div>
       )}
-      {b.status === 'confirmed' && <p className="notice mb-4">Your booking is confirmed. Your digital ticket will be available here soon.</p>}
+      {b.status === 'confirmed' && <p className="notice mb-4">Payment received and booking confirmed. Your QR ticket and PDF arrive in the next phase.</p>}
       {['expired', 'cancelled', 'failed'].includes(b.status) && <p className="notice mb-4">This booking is no longer active. Any Movie Coins you reserved were returned to your wallet.</p>}
 
       <section className="rounded-md border border-line bg-panel p-5">
